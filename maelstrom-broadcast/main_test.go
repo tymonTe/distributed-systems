@@ -52,8 +52,10 @@ func TestDoesntBroadcastRepeatMessages(t *testing.T) {
 	defer func() { w.Close(); os.Stdout = originalStdout }()
 
 	messagesReceived[123] = true // already received
+	topology["n1"] = []string{"n2"}
 
 	node := maelstrom.NewNode()
+	node.Init("n1", []string{})
 	msg := maelstrom.Message{Body: []byte(`{"message": 123}`)}
 	err := handleBroadcast(node, &msg, 123)
 	if err != nil {
@@ -64,7 +66,8 @@ func TestDoesntBroadcastRepeatMessages(t *testing.T) {
 	if output == "" {
 		t.Errorf("Expected pipe to contain output, but it was empty")
 	}
-	if strings.Contains(output, "\"type\":\"broadcast\"") {
+	originalStdout.WriteString("actual output" + output)
+	if strings.Contains(output, "\"type\":\"gossip\"") {
 		t.Errorf("Must not broadcast messages which were already received.")
 	}
 	os.Stdout = originalStdout
@@ -79,6 +82,7 @@ func TestGossipsNewMessages(t *testing.T) {
 	newMessage := int64(456)
 
 	node := maelstrom.NewNode()
+	node.Init("n1", []string{})
 	msg := maelstrom.Message{Body: []byte(`{"message": 123}`)}
 	err := handleBroadcast(node, &msg, newMessage)
 	if err != nil {
