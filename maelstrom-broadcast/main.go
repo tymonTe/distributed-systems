@@ -8,11 +8,14 @@ import (
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
 
-var messagesReceived []int64 = []int64{}
-var topology map[string][]string = make(map[string][]string)
+var (
+	messagesReceived map[int64]bool      = make(map[int64]bool)
+	topology         map[string][]string = make(map[string][]string)
+)
 
 func handleBroadcast(node *maelstrom.Node, msg *maelstrom.Message, newMessage int64) error {
-	messagesReceived = append(messagesReceived, newMessage)
+	messagesReceived[newMessage] = true
+
 	return node.Reply(*msg, map[string]any{
 		"type": "broadcast_ok",
 	})
