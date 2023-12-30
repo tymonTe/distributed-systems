@@ -16,6 +16,11 @@ var (
 func handleBroadcast(node *maelstrom.Node, msg *maelstrom.Message, newMessage int64) error {
 	messagesReceived[newMessage] = true
 
+	node.Send("n2", map[string]any{
+		"type":     "gossip",
+		"messages": []int64{newMessage},
+	})
+
 	return node.Reply(*msg, map[string]any{
 		"type": "broadcast_ok",
 	})
