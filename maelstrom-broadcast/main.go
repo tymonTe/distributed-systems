@@ -8,9 +8,18 @@ import (
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 )
 
+var messagesReceived []int64 = []int64{}
+var topology map[string][]string = make(map[string][]string)
+
+func handleBroadcast(node *maelstrom.Node, msg *maelstrom.Message, newMessage int64) error {
+	messagesReceived = append(messagesReceived, newMessage)
+	return node.Reply(*msg, map[string]any{
+		"type": "broadcast_ok",
+	})
+}
+
 func main() {
 	n := maelstrom.NewNode()
-	messagesReceived := []int64{}
 
 	n.Handle("broadcast", func(msg maelstrom.Message) error {
 		var requestBody map[string]any
@@ -22,10 +31,8 @@ func main() {
 		if !ok {
 			return fmt.Errorf("invalid message type: expected float64, got %T", requestBody["message"])
 		}
-		messagesReceived = append(messagesReceived, int64(messageValue))
-		return n.Reply(msg, map[string]any{
-			"type": "broadcast_ok",
-		})
+
+		return handleBroadcast(n, &msg, int64(messageValue))
 	})
 
 	n.Handle("read", func(msg maelstrom.Message) error {
@@ -40,6 +47,17 @@ func main() {
 	})
 
 	n.Handle("topology", func(msg maelstrom.Message) error {
+		var requestBody map[string]any
+		if err := json.Unmarshal(msg.Body, &requestBody); err != nil {
+			return err
+		}
+
+		receivedTopology, ok := requestBody["topology"].(map[string][]string)
+		if !ok {
+			return fmt.Errorf("invalid topology type: expected map[string][]string, got %T", requestBody["topology"])
+		}
+
+		topology = receivedTopology
 		return n.Reply(msg, map[string]any{
 			"type": "topology_ok",
 		})
